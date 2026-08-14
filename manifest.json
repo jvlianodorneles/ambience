@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "dorneles.ambience",
+  "name": "Ambience",
+  "version": "1.0.0",
+  "author": "Dorneles",
+  "description": "Offline ambient soundscapes, procedural noise generator, and focus sound studio for Omarchy.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Ambience Studio",
+    "description": "Ambient noise and soundscape studio",
+    "category": "Widgets",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "defaultPreset": "rain",
+      "defaultVolume": 60,
+      "showLabel": true
+    },
+    "schema": [
+      {
+        "key": "defaultPreset",
+        "type": "enum",
+        "label": "Default Sound",
+        "options": ["rain", "waves", "campfire", "brown", "pink", "white", "binaural", "cafe"],
+        "defaultValue": "rain",
+        "description": "Soundscape to start when activated."
+      },
+      {
+        "key": "defaultVolume",
+        "type": "integer",
+        "label": "Default Volume (0-100%)",
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "defaultValue": 60
+      },
+      {
+        "key": "showLabel",
+        "type": "boolean",
+        "label": "Show Sound Name on Bar",
+        "defaultValue": true,
+        "description": "Display current sound name next to the animated icon on horizontal bars."
+      }
+    ]
+  }
+}
