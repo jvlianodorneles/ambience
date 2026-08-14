@@ -2,6 +2,10 @@
 
 Offline ambient soundscapes, procedural noise generator, and focus sound studio for [Omarchy](https://omarchy.org/).
 
+<p align="center">
+  <img src="preview.png" alt="Ambience Studio Preview" width="650">
+</p>
+
 ---
 
 ## ✨ Features
