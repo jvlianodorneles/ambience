@@ -21,6 +21,8 @@ BarWidget {
   property int sleepTimerMin: 0
   property int timerRemainingSec: 0
 
+  readonly property string soundsFolderPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/dorneles.ambience/sounds"
+
   readonly property var presetIcons: ({
     "rain": "\udb81\udd97",
     "waves": "\udb82\udd3d",
@@ -43,7 +45,7 @@ BarWidget {
     "cafe": "Café Ambience"
   })
 
-  readonly property var presetList: [
+  property var presetList: [
     { id: "rain", name: "Rain", icon: "\udb81\udd97", desc: "Gentle rain shower" },
     { id: "waves", name: "Waves", icon: "\udb82\udd3d", desc: "Ocean surf & tides" },
     { id: "campfire", name: "Campfire", icon: "\udb80\ude38", desc: "Cozy wood crackle" },
@@ -62,6 +64,11 @@ BarWidget {
   function refresh() {
     if (statusProc.running) return
     statusProc.running = true
+  }
+
+  function reloadPresets() {
+    if (presetsProc.running) return
+    presetsProc.running = true
   }
 
   function togglePlay() {
@@ -103,6 +110,17 @@ BarWidget {
 
   function toggleStudioPopup() {
     studioPopup.open = !studioPopup.open
+    if (studioPopup.open) {
+      root.reloadPresets()
+    }
+  }
+
+  function openSoundsFolder() {
+    Qt.openUrlExternally("file://" + root.soundsFolderPath)
+  }
+
+  function openUrl(url) {
+    Qt.openUrlExternally(url)
   }
 
   function formatTimer(sec) {
@@ -112,7 +130,10 @@ BarWidget {
     return m + ":" + (s < 10 ? "0" : "") + s
   }
 
-  Component.onCompleted: refresh()
+  Component.onCompleted: {
+    refresh()
+    reloadPresets()
+  }
 
   IpcHandler {
     target: "dorneles.ambience"
@@ -140,6 +161,29 @@ BarWidget {
           if (data.timer_remaining !== undefined) root.timerRemainingSec = parseInt(data.timer_remaining)
         } catch (e) {
         }
+      }
+    }
+  }
+
+  Process {
+    id: presetsProc
+    command: [root.ctlScriptPath, "list"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var list = JSON.parse(text || "[]")
+          if (list && list.length > 0) {
+            root.presetList = list.map(function(item) {
+              return {
+                id: item.id,
+                name: item.name || item.id,
+                icon: item.icon || "\udb81\udf5a",
+                desc: item.type === "file" ? "Custom Audio Loop" : (root.presetNames[item.id] || "Procedural soundscape")
+              }
+            })
+          }
+        } catch (e) {}
       }
     }
   }
@@ -202,7 +246,7 @@ BarWidget {
     id: studioPopup
     anchorItem: root
     bar: root.bar
-    contentWidth: Style.space(340)
+    contentWidth: Style.space(350)
     contentHeight: fittedContentHeight(studioContent.implicitHeight)
     open: false
     triggerMode: "click"
@@ -240,7 +284,7 @@ BarWidget {
           Text {
             text: root.isPlaying
               ? ("Playing: " + root.activeName + (root.timerRemainingSec > 0 ? " (" + root.formatTimer(root.timerRemainingSec) + " left)" : ""))
-              : "Offline Soundscapes"
+              : "Offline Soundscapes & Noise"
             color: root.isPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Qt.darker(Color.foreground, 1.4)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -412,6 +456,80 @@ BarWidget {
         text: root.isPlaying ? ("Pause " + root.activeName) : ("Play " + root.activeName)
         iconText: root.isPlaying ? "\udb80\udfe4" : "\udb80\udfe3"
         onClicked: root.togglePlay()
+      }
+
+      PanelSeparator { foreground: Color.foreground }
+
+      // Section 5: Add Custom Sounds & Open Source Instructions
+      PanelSectionHeader {
+        text: "ADD CUSTOM SOUNDS (OPEN SOURCE)"
+        foreground: Color.foreground
+      }
+
+      BorderSurface {
+        width: parent.width
+        implicitHeight: customGuideCol.implicitHeight + Style.spacing.md * 2
+        radius: Style.cornerRadius > 0 ? Style.cornerRadius : 6
+        color: Style.controlFill(false, false, Color.foreground, Color.accent)
+        borderSpec: Border.controlSpec("normal", Color.foreground, Color.accent)
+
+        Column {
+          id: customGuideCol
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.top: parent.top
+          anchors.margins: Style.spacing.md
+          spacing: Style.spacing.sm
+
+          Text {
+            width: parent.width
+            text: "Drop any .ogg, .mp3, .wav, or .flac loop files into your sounds folder. They will automatically appear in this menu!"
+            color: Color.foreground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.Wrap
+          }
+
+          Text {
+            width: parent.width
+            text: "Folder: ~/.config/omarchy/plugins/dorneles.ambience/sounds/"
+            color: Color.accent
+            font.family: Style.font.family
+            font.pixelSize: Style.font.tiny || 9
+            font.italic: true
+            elide: Text.ElideMiddle
+          }
+
+          Text {
+            width: parent.width
+            text: "Free & Open Source sound repositories (CC0 / Public Domain):"
+            color: Qt.darker(Color.foreground, 1.3)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.tiny || 9
+            font.bold: true
+          }
+
+          Row {
+            width: parent.width
+            spacing: Style.spacing.sm
+
+            Button {
+              width: (parent.width - Style.spacing.sm) / 2
+              text: "Open Folder"
+              iconText: "\udb80\ude4b"
+              tooltipText: "Open sounds directory in file manager"
+              onClicked: root.openSoundsFolder()
+            }
+
+            Button {
+              width: (parent.width - Style.spacing.sm) / 2
+              text: "Freesound.org"
+              iconText: "\udb80\udf35"
+              tooltipText: "Search free CC0 ambient sounds on Freesound"
+              onClicked: root.openUrl("https://freesound.org/search/?q=ambient+loop&f=license%3A%22Creative+Commons+0%22")
+            }
+          }
+        }
       }
     }
   }

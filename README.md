@@ -30,6 +30,23 @@ Offline ambient soundscapes, procedural noise generator, and focus sound studio 
 
 ---
 
+## 🌐 Open Source Sound Resources & Custom Loops
+
+You can add your own soundscapes to Ambience Studio simply by dropping `.ogg`, `.mp3`, `.wav`, or `.flac` files into:
+
+```bash
+~/.config/omarchy/plugins/dorneles.ambience/sounds/
+```
+
+The plugin will automatically detect them and add them as selectable cards in the **Ambience Studio** popup!
+
+### Recommended Free & Open Source Audio Repositories:
+- **[Freesound.org (CC0 Sounds)](https://freesound.org/search/?q=ambient+loop&f=license%3A%22Creative+Commons+0%22)**: Thousands of public domain nature loops, rain, wind, and city soundscapes.
+- **[Wikimedia Commons Audio](https://commons.wikimedia.org/wiki/Category:Audio_files)**: High-quality public domain field recordings.
+- **[Internet Archive Audio Archive](https://archive.org/details/audio)**: Extensive library of free ambient recordings.
+
+---
+
 ## 📋 Requirements & Dependencies
 
 - **PipeWire / ALSA**: `aplay` or `pw-play` (pre-installed on Omarchy/Arch).
