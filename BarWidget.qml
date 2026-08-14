@@ -246,7 +246,7 @@ BarWidget {
     id: studioPopup
     anchorItem: root
     bar: root.bar
-    contentWidth: Style.space(360)
+    contentWidth: Style.space(380)
     contentHeight: fittedContentHeight(studioContent.implicitHeight)
     open: false
     triggerMode: "click"
@@ -332,7 +332,11 @@ BarWidget {
             borderSpec: Border.controlSpec(isCurrentPlaying ? "selected" : (isSelected ? "selected" : (mouseItem.containsMouse ? "hover-cursor" : "normal")), Color.foreground, Color.accent)
 
             Row {
-              anchors.centerIn: parent
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              anchors.leftMargin: Style.spacing.md
+              anchors.rightMargin: Style.spacing.sm
               spacing: Style.spacing.sm
 
               Text {
@@ -341,27 +345,34 @@ BarWidget {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title
                 anchors.verticalCenter: parent.verticalCenter
+                width: Style.space(24)
+                horizontalAlignment: Text.AlignHCenter
               }
 
               Column {
                 anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - Style.space(32)
                 spacing: 1
 
                 Text {
+                  width: parent.width
                   text: modelData.name
                   color: isCurrentPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Color.foreground
                   font.family: Style.font.family
                   font.pixelSize: Style.font.body
                   font.bold: isSelected
                   elide: Text.ElideRight
+                  maximumLineCount: 1
                 }
 
                 Text {
+                  width: parent.width
                   text: modelData.desc
                   color: Qt.darker(Color.foreground, 1.5)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.tiny || 9
                   elide: Text.ElideRight
+                  maximumLineCount: 1
                 }
               }
             }
