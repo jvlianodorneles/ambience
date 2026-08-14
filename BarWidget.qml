@@ -46,14 +46,14 @@ BarWidget {
   })
 
   property var presetList: [
-    { id: "rain", name: "Rain", icon: "\udb81\udd97", desc: "Gentle rain shower" },
-    { id: "waves", name: "Waves", icon: "\udb82\udd3d", desc: "Ocean surf & tides" },
-    { id: "campfire", name: "Campfire", icon: "\udb80\ude38", desc: "Cozy wood crackle" },
-    { id: "brown", name: "Brown Noise", icon: "\udb81\udf5a", desc: "Deep rumble for focus" },
-    { id: "pink", name: "Pink Noise", icon: "\udb81\udf5a", desc: "Balanced soothing noise" },
-    { id: "white", name: "White Noise", icon: "\udb81\udf5a", desc: "Crisp frequency mask" },
-    { id: "binaural", name: "Binaural", icon: "\udb80\udecb", desc: "10Hz Alpha brainwaves" },
-    { id: "cafe", name: "Café", icon: "\udb80\udd56", desc: "Warm coffee shop" }
+    { id: "rain", name: "Rain", icon: "\udb81\udd97", desc: "Rain shower" },
+    { id: "waves", name: "Waves", icon: "\udb82\udd3d", desc: "Ocean surf" },
+    { id: "campfire", name: "Campfire", icon: "\udb80\ude38", desc: "Wood crackle" },
+    { id: "brown", name: "Brown Noise", icon: "\udb81\udf5a", desc: "Deep rumble" },
+    { id: "pink", name: "Pink Noise", icon: "\udb81\udf5a", desc: "Natural 1/f" },
+    { id: "white", name: "White Noise", icon: "\udb81\udf5a", desc: "Static mask" },
+    { id: "binaural", name: "Binaural", icon: "\udb80\udecb", desc: "10Hz Alpha" },
+    { id: "cafe", name: "Café", icon: "\udb80\udd56", desc: "Coffee shop" }
   ]
 
   readonly property string activeIcon: presetIcons[currentPreset] || "\udb81\udf5a"
@@ -246,7 +246,7 @@ BarWidget {
     id: studioPopup
     anchorItem: root
     bar: root.bar
-    contentWidth: Style.space(350)
+    contentWidth: Style.space(360)
     contentHeight: fittedContentHeight(studioContent.implicitHeight)
     open: false
     triggerMode: "click"
@@ -320,7 +320,7 @@ BarWidget {
             required property int index
 
             width: (parent.width - Style.spacing.sm) / 2
-            implicitHeight: Style.space(48)
+            implicitHeight: Style.space(52)
             radius: Style.cornerRadius > 0 ? Style.cornerRadius : 6
 
             readonly property bool isSelected: root.currentPreset === modelData.id
@@ -332,11 +332,7 @@ BarWidget {
             borderSpec: Border.controlSpec(isCurrentPlaying ? "selected" : (isSelected ? "selected" : (mouseItem.containsMouse ? "hover-cursor" : "normal")), Color.foreground, Color.accent)
 
             Row {
-              anchors.left: parent.left
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              anchors.leftMargin: Style.spacing.sm
-              anchors.rightMargin: Style.spacing.sm
+              anchors.centerIn: parent
               spacing: Style.spacing.sm
 
               Text {
@@ -348,8 +344,8 @@ BarWidget {
               }
 
               Column {
-                width: parent.width - Style.space(34)
                 anchors.verticalCenter: parent.verticalCenter
+                spacing: 1
 
                 Text {
                   text: modelData.name
@@ -358,7 +354,6 @@ BarWidget {
                   font.pixelSize: Style.font.body
                   font.bold: isSelected
                   elide: Text.ElideRight
-                  width: parent.width
                 }
 
                 Text {
@@ -367,7 +362,6 @@ BarWidget {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.tiny || 9
                   elide: Text.ElideRight
-                  width: parent.width
                 }
               }
             }
@@ -454,7 +448,7 @@ BarWidget {
         bordered: true
         active: root.isPlaying
         text: root.isPlaying ? ("Pause " + root.activeName) : ("Play " + root.activeName)
-        iconText: root.isPlaying ? "\udb80\udfe4" : "\udb80\udfe3"
+        iconText: root.isPlaying ? "󰏤" : "󰐊"
         onClicked: root.togglePlay()
       }
 
@@ -462,7 +456,7 @@ BarWidget {
 
       // Section 5: Add Custom Sounds & Open Source Instructions
       PanelSectionHeader {
-        text: "ADD CUSTOM SOUNDS (OPEN SOURCE)"
+        text: "CUSTOM SOUNDS & OPEN SOURCE LOOPS"
         foreground: Color.foreground
       }
 
@@ -483,30 +477,21 @@ BarWidget {
 
           Text {
             width: parent.width
-            text: "Drop any .ogg, .mp3, .wav, or .flac loop files into your sounds folder. They will automatically appear in this menu!"
+            text: "Drop any audio loop files (.ogg, .mp3, .wav, .flac) into your sounds folder to add them to this menu."
             color: Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            wrapMode: Text.Wrap
+            wrapMode: Text.WordWrap
           }
 
           Text {
             width: parent.width
-            text: "Folder: ~/.config/omarchy/plugins/dorneles.ambience/sounds/"
-            color: Color.accent
-            font.family: Style.font.family
-            font.pixelSize: Style.font.tiny || 9
-            font.italic: true
-            elide: Text.ElideMiddle
-          }
-
-          Text {
-            width: parent.width
-            text: "Free & Open Source sound repositories (CC0 / Public Domain):"
+            text: "Free & Open Source repositories (CC0 / Public Domain):"
             color: Qt.darker(Color.foreground, 1.3)
             font.family: Style.font.family
             font.pixelSize: Style.font.tiny || 9
             font.bold: true
+            wrapMode: Text.WordWrap
           }
 
           Row {
