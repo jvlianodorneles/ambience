@@ -1,5 +1,7 @@
 import QtQuick
+import QtQuick.Controls
 import Quickshell
+import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.Commons
@@ -10,9 +12,17 @@ BarWidget {
   moduleName: "dorneles.ambience"
 
   // Settings
+  property string currentMode: (settings && settings.mode !== undefined) ? String(settings.mode) : setting("mode", "always")
   readonly property string defaultPreset: setting("defaultPreset", "rain")
   readonly property int defaultVolume: setting("defaultVolume", 60)
   readonly property bool showLabelSetting: setting("showLabel", true)
+
+  onSettingsChanged: {
+    currentMode = (settings && settings.mode !== undefined) ? String(settings.mode) : setting("mode", "always")
+  }
+
+  // Bar visibility: in active-only mode, only show on bar when sound is playing
+  readonly property bool isWidgetVisible: currentMode === "always" || isPlaying
 
   // Live state
   property bool isPlaying: false
@@ -108,11 +118,18 @@ BarWidget {
     cmdProc.running = true
   }
 
-  function toggleStudioPopup() {
-    studioPopup.open = !studioPopup.open
-    if (studioPopup.open) {
-      root.reloadPresets()
-    }
+  function openStudio() {
+    studioWindow.open = true
+    root.reloadPresets()
+  }
+
+  function closeStudio() {
+    studioWindow.open = false
+  }
+
+  function toggleStudio() {
+    studioWindow.open = !studioWindow.open
+    if (studioWindow.open) root.reloadPresets()
   }
 
   function openSoundsFolder() {
@@ -142,7 +159,8 @@ BarWidget {
     function stop(): void { root.runCommand(["stop"]) }
     function next(): void { root.cyclePreset() }
     function volume(vol: string): void { root.setVolume(parseInt(vol) || 60) }
-    function openStudio(): void { root.toggleStudioPopup() }
+    function openStudio(): void { root.openStudio() }
+    function closeStudio(): void { root.closeStudio() }
     function status(): string { return JSON.stringify({ playing: root.isPlaying, preset: root.currentPreset, volume: root.currentVolume }) }
   }
 
@@ -209,11 +227,14 @@ BarWidget {
     onTriggered: root.refresh()
   }
 
-  implicitWidth: root.vertical ? button.implicitWidth : button.implicitWidth
-  implicitHeight: root.vertical ? button.implicitHeight : root.barSize
+  visible: isWidgetVisible
+  implicitWidth: !isWidgetVisible ? 0 : (root.vertical ? button.implicitWidth : button.implicitWidth)
+  implicitHeight: !isWidgetVisible ? 0 : (root.vertical ? button.implicitHeight : root.barSize)
 
+  // Top Bar Button (Only visible on the bar when audio is actively playing)
   WidgetButton {
     id: button
+    visible: root.isWidgetVisible
     anchors.fill: parent
     bar: root.bar
     text: root.vertical || !root.showLabelSetting
@@ -229,9 +250,9 @@ BarWidget {
     tooltipText: "Ambience: " + root.activeName + " (" + root.currentVolume + "%)\n"
       + "Status: " + (root.isPlaying ? "Playing" : "Stopped")
       + (root.timerRemainingSec > 0 ? " | Timer: " + root.formatTimer(root.timerRemainingSec) : "")
-      + "\n(Left-click: Play/Pause | Wheel: Volume | Middle-click: Next sound | Right-click: Studio)"
+      + "\n(Left-click: Play/Pause | Wheel: Volume | Middle-click: Next sound | Right-click: Ambience)"
     onPressed: function(btn) {
-      if (btn === Qt.RightButton) root.toggleStudioPopup()
+      if (btn === Qt.RightButton) root.toggleStudio()
       else if (btn === Qt.MiddleButton) root.cyclePreset()
       else root.togglePlay()
     }
@@ -241,287 +262,445 @@ BarWidget {
     }
   }
 
-  // Ambience Studio Popup Card
-  PopupCard {
-    id: studioPopup
-    anchorItem: root
-    bar: root.bar
-    contentWidth: Style.space(380)
-    contentHeight: fittedContentHeight(studioContent.implicitHeight)
-    open: false
-    triggerMode: "click"
+  // Centered Studio Window with Exclusive Keyboard Focus (Modal like Omasaver)
+  PanelWindow {
+    id: studioWindow
+    visible: open
+    property bool open: false
 
-    Column {
-      id: studioContent
-      width: parent.width
-      spacing: Style.spacing.md
+    anchors {
+      top: true
+      bottom: true
+      left: true
+      right: true
+    }
+    color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
 
-      // Header Row
-      Row {
-        width: parent.width
-        spacing: Style.spacing.sm
+    WlrLayershell.namespace: "omarchy-ambience-studio"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-        Text {
-          text: root.activeIcon
-          color: root.isPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Color.accent
-          font.family: Style.font.family
-          font.pixelSize: Style.font.title
-          anchors.verticalCenter: parent.verticalCenter
-        }
+    onOpenChanged: {
+      if (open) {
+        root.reloadPresets()
+        root.refresh()
+        Qt.callLater(function() {
+          keyCatcher.forceActiveFocus()
+        })
+      }
+    }
 
-        Column {
-          width: parent.width - Style.space(80)
-          anchors.verticalCenter: parent.verticalCenter
+    Item {
+      id: keyCatcher
+      anchors.fill: parent
+      focus: true
 
-          Text {
-            text: "Ambience Studio"
-            color: Color.foreground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.subtitle
-            font.bold: true
-          }
+      Keys.onEscapePressed: function(event) {
+        studioWindow.open = false
+        if (event) event.accepted = true
+      }
 
-          Text {
-            text: root.isPlaying
-              ? ("Playing: " + root.activeName + (root.timerRemainingSec > 0 ? " (" + root.formatTimer(root.timerRemainingSec) + " left)" : ""))
-              : "Offline Soundscapes & Noise"
-            color: root.isPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Qt.darker(Color.foreground, 1.4)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-          }
-        }
-
-        Button {
-          iconText: "\udb80\udd56"
-          tooltipText: "Close"
-          anchors.verticalCenter: parent.verticalCenter
-          onClicked: studioPopup.close()
+      Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape) {
+          studioWindow.open = false
+          event.accepted = true
         }
       }
 
-      PanelSeparator { foreground: Color.foreground }
+      // Scrim (darkened backdrop)
+      Rectangle {
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.75)
 
-      // Section 1: Soundscapes Grid
-      PanelSectionHeader {
-        text: "SOUNDSCAPES"
-        foreground: Color.foreground
-      }
-
-      Grid {
-        width: parent.width
-        columns: 2
-        spacing: Style.spacing.sm
-
-        Repeater {
-          model: root.presetList
-
-          delegate: BorderSurface {
-            required property var modelData
-            required property int index
-
-            width: (parent.width - Style.spacing.sm) / 2
-            implicitHeight: Style.space(52)
-            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 6
-
-            readonly property bool isSelected: root.currentPreset === modelData.id
-            readonly property bool isCurrentPlaying: isSelected && root.isPlaying
-
-            color: isCurrentPlaying
-              ? (root.bar ? Qt.rgba(root.bar.urgent.r, root.bar.urgent.g, root.bar.urgent.b, 0.22) : Qt.rgba(1, 0.35, 0.35, 0.22))
-              : (isSelected ? Style.selectedFillFor(Color.foreground, Color.accent) : Style.controlFill(false, mouseItem.containsMouse, Color.foreground, Color.accent))
-            borderSpec: Border.controlSpec(isCurrentPlaying ? "selected" : (isSelected ? "selected" : (mouseItem.containsMouse ? "hover-cursor" : "normal")), Color.foreground, Color.accent)
-
-            Row {
-              anchors.left: parent.left
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              anchors.leftMargin: Style.spacing.md
-              anchors.rightMargin: Style.spacing.sm
-              spacing: Style.spacing.sm
-
-              Text {
-                text: modelData.icon
-                color: isCurrentPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Color.foreground
-                font.family: Style.font.family
-                font.pixelSize: Style.font.title
-                anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(24)
-                horizontalAlignment: Text.AlignHCenter
-              }
-
-              Column {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - Style.space(32)
-                spacing: 1
-
-                Text {
-                  width: parent.width
-                  text: modelData.name
-                  color: isCurrentPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Color.foreground
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.body
-                  font.bold: isSelected
-                  elide: Text.ElideRight
-                  maximumLineCount: 1
-                }
-
-                Text {
-                  width: parent.width
-                  text: modelData.desc
-                  color: Qt.darker(Color.foreground, 1.5)
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.tiny || 9
-                  elide: Text.ElideRight
-                  maximumLineCount: 1
-                }
-              }
-            }
-
-            MouseArea {
-              id: mouseItem
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                root.setPreset(modelData.id)
-                if (!root.isPlaying) root.togglePlay()
-              }
-            }
-          }
+        MouseArea {
+          anchors.fill: parent
+          onClicked: studioWindow.open = false
         }
       }
 
-      PanelSeparator { foreground: Color.foreground }
-
-      // Section 2: Volume Control
-      Row {
-        width: parent.width
-        spacing: Style.spacing.sm
-
-        Text {
-          text: root.currentVolume === 0 ? "\udb81\udf5f" : (root.currentVolume < 50 ? "\udb81\udf5e" : "\udb81\udf5c")
-          color: Color.foreground
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
-          anchors.verticalCenter: parent.verticalCenter
-        }
-
-        Text {
-          text: "Volume (" + root.currentVolume + "%)"
-          color: Color.foreground
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          font.bold: true
-          anchors.verticalCenter: parent.verticalCenter
-          width: Style.space(90)
-        }
-
-        PanelSlider {
-          id: volumeSlider
-          bar: root.bar
-          minimum: 0
-          maximum: 100
-          step: 5
-          value: root.currentVolume
-          anchors.verticalCenter: parent.verticalCenter
-          width: parent.width - Style.space(125)
-          onMoved: function(val) { root.setVolume(Math.round(val)) }
-          onReleased: function(val) { root.setVolume(Math.round(val)) }
-        }
-      }
-
-      PanelSeparator { foreground: Color.foreground }
-
-      // Section 3: Sleep Timer
-      PanelSectionHeader {
-        text: "SLEEP TIMER" + (root.timerRemainingSec > 0 ? (" (ACTIVE: " + root.formatTimer(root.timerRemainingSec) + ")") : "")
-        foreground: Color.foreground
-      }
-
-      ButtonGroup {
-        width: parent.width
-        options: [
-          { value: "0", label: "Off" },
-          { value: "15", label: "15m" },
-          { value: "30", label: "30m" },
-          { value: "45", label: "45m" },
-          { value: "60", label: "60m" }
-        ]
-        value: String(root.sleepTimerMin)
-        onChanged: function(val) { root.setTimer(parseInt(val) || 0) }
-      }
-
-      PanelSeparator { foreground: Color.foreground }
-
-      // Section 4: Main Play / Pause Action Button
-      Button {
-        width: parent.width
-        bordered: true
-        active: root.isPlaying
-        text: root.isPlaying ? ("Pause " + root.activeName) : ("Play " + root.activeName)
-        iconText: root.isPlaying ? "󰏤" : "󰐊"
-        onClicked: root.togglePlay()
-      }
-
-      PanelSeparator { foreground: Color.foreground }
-
-      // Section 5: Add Custom Sounds & Open Source Instructions
-      PanelSectionHeader {
-        text: "CUSTOM SOUNDS & OPEN SOURCE LOOPS"
-        foreground: Color.foreground
-      }
-
+      // Centered Large Studio Card
       BorderSurface {
-        width: parent.width
-        implicitHeight: customGuideCol.implicitHeight + Style.spacing.md * 2
-        radius: Style.cornerRadius > 0 ? Style.cornerRadius : 6
-        color: Style.controlFill(false, false, Color.foreground, Color.accent)
-        borderSpec: Border.controlSpec("normal", Color.foreground, Color.accent)
+        id: studioCard
+        anchors.centerIn: parent
+        width: Style.space(760)
+        implicitHeight: cardContent.implicitHeight + Style.space(36)
+        radius: Style.cornerRadius > 0 ? Style.cornerRadius + 2 : 8
+        color: Color.popups.background
+        borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
 
-        Column {
-          id: customGuideCol
-          anchors.left: parent.left
-          anchors.right: parent.right
-          anchors.top: parent.top
-          anchors.margins: Style.spacing.md
+        // Prevent clicks inside card from closing modal
+        MouseArea {
+          anchors.fill: parent
+          onClicked: {}
+        }
+
+      Column {
+        id: cardContent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: Style.space(20)
+        spacing: Style.spacing.md
+
+        // Header Row
+        Row {
+          width: parent.width
           spacing: Style.spacing.sm
 
           Text {
-            width: parent.width
-            text: "Drop any audio loop files (.ogg, .mp3, .wav, .flac) into your sounds folder to add them to this menu."
-            color: Color.foreground
+            text: root.activeIcon
+            color: root.isPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Color.accent
             font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            wrapMode: Text.WordWrap
+            font.pixelSize: Style.font.title
+            anchors.verticalCenter: parent.verticalCenter
           }
 
-          Text {
-            width: parent.width
-            text: "Free & Open Source repositories (CC0 / Public Domain):"
-            color: Qt.darker(Color.foreground, 1.3)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.tiny || 9
-            font.bold: true
-            wrapMode: Text.WordWrap
-          }
+          Column {
+            width: parent.width - Style.space(60)
+            anchors.verticalCenter: parent.verticalCenter
 
-          Row {
-            width: parent.width
-            spacing: Style.spacing.sm
-
-            Button {
-              width: (parent.width - Style.spacing.sm) / 2
-              text: "Open Folder"
-              iconText: "\udb80\ude4b"
-              tooltipText: "Open sounds directory in file manager"
-              onClicked: root.openSoundsFolder()
+            Text {
+              text: "Ambience"
+              color: Color.foreground
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtitle
+              font.bold: true
             }
 
-            Button {
-              width: (parent.width - Style.spacing.sm) / 2
-              text: "Freesound.org"
-              iconText: "\udb80\udf35"
-              tooltipText: "Search free CC0 ambient sounds on Freesound"
+            Text {
+              text: root.isPlaying
+                ? ("Tocando agora: " + root.activeName + " (" + root.currentVolume + "%)" + (root.timerRemainingSec > 0 ? " — Desligando em " + root.formatTimer(root.timerRemainingSec) : ""))
+                : "Sons ambientes relaxantes, gerador de ruído e foco off-line"
+              color: root.isPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Qt.darker(Color.foreground, 1.4)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+            }
+          }
+
+          Button {
+            iconText: "\udb80\udd56"
+            tooltipText: "Fechar (Esc)"
+            anchors.verticalCenter: parent.verticalCenter
+            onClicked: studioWindow.open = false
+          }
+        }
+
+        PanelSeparator { foreground: Color.foreground }
+
+        // Section 1: Soundscapes Grid (4 columns x 2 rows)
+        PanelSectionHeader {
+          text: "SONS AMBIENTES (" + root.presetList.length + " DISPONÍVEIS)"
+          foreground: Color.foreground
+        }
+
+        Grid {
+          width: parent.width
+          columns: 4
+          spacing: Style.spacing.xs
+
+          Repeater {
+            model: root.presetList
+
+            delegate: BorderSurface {
+              required property var modelData
+              required property int index
+
+              width: (parent.width - Style.spacing.xs * 3) / 4
+              implicitHeight: Style.space(56)
+              radius: Style.cornerRadius > 0 ? Style.cornerRadius : 6
+
+              readonly property bool isSelected: root.currentPreset === modelData.id
+              readonly property bool isCurrentPlaying: isSelected && root.isPlaying
+
+              color: isCurrentPlaying
+                ? (root.bar ? Qt.rgba(root.bar.urgent.r, root.bar.urgent.g, root.bar.urgent.b, 0.25) : Qt.rgba(1, 0.35, 0.35, 0.25))
+                : (isSelected ? Style.selectedFillFor(Color.foreground, Color.accent) : Style.controlFill(false, mouseItem.containsMouse, Color.foreground, Color.accent))
+              borderSpec: Border.controlSpec(isCurrentPlaying ? "selected" : (isSelected ? "selected" : (mouseItem.containsMouse ? "hover-cursor" : "normal")), Color.foreground, Color.accent)
+
+              Row {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: Style.spacing.sm
+                anchors.rightMargin: Style.spacing.xs
+                spacing: Style.spacing.xs
+
+                Text {
+                  text: modelData.icon
+                  color: isCurrentPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : (isSelected ? Color.accent : Color.foreground)
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.title
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(22)
+                  horizontalAlignment: Text.AlignHCenter
+                }
+
+                Column {
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: parent.width - Style.space(26)
+                  spacing: 1
+
+                  Text {
+                    width: parent.width
+                    text: modelData.name
+                    color: isCurrentPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Color.foreground
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall || Style.font.caption
+                    font.bold: isSelected
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                  }
+
+                  Text {
+                    width: parent.width
+                    text: modelData.desc
+                    color: Qt.darker(Color.foreground, 1.5)
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                  }
+                }
+              }
+
+              MouseArea {
+                id: mouseItem
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.setPreset(modelData.id)
+                  if (!root.isPlaying) root.togglePlay()
+                }
+              }
+            }
+          }
+        }
+
+        PanelSeparator { foreground: Color.foreground }
+
+        // Section 2: Volume & Sleep Timer (2 Columns Grid)
+        Row {
+          width: parent.width
+          spacing: Style.spacing.lg
+
+          // Left Side: Volume Controls
+          Column {
+            width: (parent.width - Style.spacing.lg) / 2
+            spacing: Style.spacing.xs
+
+            PanelSectionHeader {
+              text: "VOLUME (" + root.currentVolume + "%)"
+              foreground: Color.foreground
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.spacing.sm
+
+              Text {
+                text: root.currentVolume === 0 ? "\udb81\udf5f" : (root.currentVolume < 50 ? "\udb81\udf5e" : "\udb81\udf5c")
+                color: Color.foreground
+                font.family: Style.font.family
+                font.pixelSize: Style.font.body
+                anchors.verticalCenter: parent.verticalCenter
+              }
+
+              PanelSlider {
+                id: volumeSlider
+                bar: root.bar
+                minimum: 0
+                maximum: 100
+                step: 5
+                value: root.currentVolume
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - Style.space(35)
+                onMoved: function(val) { root.setVolume(Math.round(val)) }
+                onReleased: function(val) { root.setVolume(Math.round(val)) }
+              }
+            }
+
+            // Quick Volume Presets
+            Row {
+              width: parent.width
+              spacing: Style.spacing.xs
+
+              Repeater {
+                model: [
+                  { label: "Mudo", val: 0 },
+                  { label: "30%", val: 30 },
+                  { label: "60%", val: 60 },
+                  { label: "80%", val: 80 },
+                  { label: "100%", val: 100 }
+                ]
+
+                delegate: BorderSurface {
+                  required property var modelData
+                  width: (parent.width - Style.spacing.xs * 4) / 5
+                  implicitHeight: Style.space(26)
+                  radius: Style.cornerRadius > 0 ? Style.cornerRadius : 4
+
+                  readonly property bool isCur: root.currentVolume === modelData.val
+                  color: isCur ? Style.selectedFillFor(Color.foreground, Color.accent) : Style.controlFill(false, volMouse.containsMouse, Color.foreground, Color.accent)
+                  borderSpec: Border.controlSpec(isCur ? "selected" : (volMouse.containsMouse ? "hover-cursor" : "normal"), Color.foreground, Color.accent)
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: modelData.label
+                    color: isCur ? Color.accent : Color.foreground
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.tiny || 9
+                    font.bold: isCur
+                  }
+
+                  MouseArea {
+                    id: volMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.setVolume(modelData.val)
+                  }
+                }
+              }
+            }
+          }
+
+          // Right Side: Sleep Timer
+          Column {
+            width: (parent.width - Style.spacing.lg) / 2
+            spacing: Style.spacing.xs
+
+            PanelSectionHeader {
+              text: "TEMPORIZADOR" + (root.timerRemainingSec > 0 ? (" (RESTANTE: " + root.formatTimer(root.timerRemainingSec) + ")") : "")
+              foreground: Color.foreground
+            }
+
+            ButtonGroup {
+              width: parent.width
+              options: [
+                { value: "0", label: "Off" },
+                { value: "15", label: "15m" },
+                { value: "30", label: "30m" },
+                { value: "45", label: "45m" },
+                { value: "60", label: "60m" },
+                { value: "90", label: "90m" }
+              ]
+              value: String(root.sleepTimerMin)
+              onChanged: function(val) { root.setTimer(parseInt(val) || 0) }
+            }
+          }
+        }
+
+        PanelSeparator { foreground: Color.foreground }
+
+        // Section 3: Action Controls Bar (4 Action Buttons)
+        Grid {
+          width: parent.width
+          columns: 4
+          spacing: Style.spacing.xs
+
+          // Button 1: Main Play / Pause
+          BorderSurface {
+            width: (parent.width - Style.spacing.xs * 3) / 4
+            height: Style.space(38)
+            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 4
+            color: root.isPlaying
+              ? (root.bar ? Qt.rgba(root.bar.urgent.r, root.bar.urgent.g, root.bar.urgent.b, 0.25) : Qt.rgba(1, 0.35, 0.35, 0.25))
+              : Style.controlFill(false, btn1Mouse.containsMouse, Color.foreground, Color.accent)
+            borderSpec: Border.controlSpec(root.isPlaying ? "selected" : (btn1Mouse.containsMouse ? "hover-cursor" : "normal"), Color.foreground, Color.accent)
+
+            Row {
+              anchors.centerIn: parent
+              spacing: 6
+              Text {
+                text: root.isPlaying ? "󰏤" : "󰐊"
+                color: root.isPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Color.accent
+                font.pixelSize: Style.font.body
+                anchors.verticalCenter: parent.verticalCenter
+              }
+              Text {
+                text: root.isPlaying ? "Pausar" : "Tocar"
+                color: Color.foreground
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+              }
+            }
+            MouseArea {
+              id: btn1Mouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.togglePlay()
+            }
+          }
+
+          // Button 2: Next Sound
+          BorderSurface {
+            width: (parent.width - Style.spacing.xs * 3) / 4
+            height: Style.space(38)
+            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 4
+            color: Style.controlFill(false, btn2Mouse.containsMouse, Color.foreground, Color.accent)
+            borderSpec: Border.controlSpec(btn2Mouse.containsMouse ? "hover-cursor" : "normal", Color.foreground, Color.accent)
+
+            Row {
+              anchors.centerIn: parent
+              spacing: 6
+              Text { text: "󰒭"; color: Color.foreground; font.pixelSize: Style.font.body; anchors.verticalCenter: parent.verticalCenter }
+              Text { text: "Próximo som"; color: Color.foreground; font.pixelSize: Style.font.caption; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+            }
+            MouseArea {
+              id: btn2Mouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.cyclePreset()
+            }
+          }
+
+          // Button 3: Open Sounds Folder
+          BorderSurface {
+            width: (parent.width - Style.spacing.xs * 3) / 4
+            height: Style.space(38)
+            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 4
+            color: Style.controlFill(false, btn3Mouse.containsMouse, Color.foreground, Color.accent)
+            borderSpec: Border.controlSpec(btn3Mouse.containsMouse ? "hover-cursor" : "normal", Color.foreground, Color.accent)
+
+            Row {
+              anchors.centerIn: parent
+              spacing: 6
+              Text { text: "\udb80\ude4b"; color: Color.foreground; font.pixelSize: Style.font.body; anchors.verticalCenter: parent.verticalCenter }
+              Text { text: "Pasta de sons"; color: Color.foreground; font.pixelSize: Style.font.caption; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+            }
+            MouseArea {
+              id: btn3Mouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.openSoundsFolder()
+            }
+          }
+
+          // Button 4: Freesound Link
+          BorderSurface {
+            width: (parent.width - Style.spacing.xs * 3) / 4
+            height: Style.space(38)
+            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 4
+            color: Style.controlFill(false, btn4Mouse.containsMouse, Color.foreground, Color.accent)
+            borderSpec: Border.controlSpec(btn4Mouse.containsMouse ? "hover-cursor" : "normal", Color.foreground, Color.accent)
+
+            Row {
+              anchors.centerIn: parent
+              spacing: 6
+              Text { text: "\udb80\udf35"; color: Color.accent; font.pixelSize: Style.font.body; anchors.verticalCenter: parent.verticalCenter }
+              Text { text: "Freesound (CC0)"; color: Color.foreground; font.pixelSize: Style.font.caption; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+            }
+            MouseArea {
+              id: btn4Mouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
               onClicked: root.openUrl("https://freesound.org/search/?q=ambient+loop&f=license%3A%22Creative+Commons+0%22")
             }
           }
@@ -529,4 +708,5 @@ BarWidget {
       }
     }
   }
+}
 }

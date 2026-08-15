@@ -1,9 +1,9 @@
-# Ambience Studio for Omarchy 🌧️🎧
+# Ambience for Omarchy 🌧️🎧
 
-Offline ambient soundscapes, procedural noise generator, and focus sound studio for [Omarchy](https://omarchy.org/).
+Offline ambient soundscapes, procedural noise generator, and focus sound player for [Omarchy](https://omarchy.org/).
 
 <p align="center">
-  <img src="preview.png" alt="Ambience Studio Preview" width="650">
+  <img src="preview.png" alt="Ambience Preview" width="700">
 </p>
 
 ---
@@ -21,28 +21,46 @@ Offline ambient soundscapes, procedural noise generator, and focus sound studio 
   - 🧠 **Binaural Beats (Alpha 10Hz)**: Stereo-separated frequencies (200Hz left / 210Hz right) to induce focus.
   - ☕ **Café Ambience**: Warm coffee shop acoustic resonance.
 - **📁 Custom Audio Loops**: Drop your own `.ogg`, `.mp3`, or `.wav` files into `sounds/` to play personal tracks seamlessly.
-- **🖱️ Intuitive Bar Controls**:
+- **🖥️ Centered Modal Window**:
+  - Large centered card (760px) with backdrop scrim.
+  - 4-column Soundscape selection cards with active playing badges.
+  - Fluid volume slider (0% - 100%) + quick presets (Mute, 30%, 60%, 80%, 100%).
+  - **Sleep Timer**: Auto-off countdown (Off, 15m, 30m, 45m, 60m, 90m).
+  - Quick access to open local sounds folder and Freesound CC0 catalog.
+  - Press `Esc` to close immediately.
+- **🪄 Smart Auto-Hide Top Bar Widget**:
+  - Automatically hidden from the top bar when stopped/inactive.
+  - Dynamically appears on the top bar when audio is playing, showing the active sound name, volume, and timer countdown.
+- **🖱️ Bar Controls (When Playing)**:
   - **Left-Click**: Play / Pause toggle.
   - **Mouse Wheel**: Smooth volume adjustment up / down (+/- 5%).
   - **Middle-Click**: Quick-cycle to the next sound preset.
-  - **Right-Click**: Opens the **Ambience Studio** visual popup card.
-- **🎚️ Ambience Studio Popup**:
-  - 2-column Soundscape selection cards.
-  - Fluid volume slider (0% - 100%).
-  - **Sleep Timer**: Auto-off countdown (Off, 15m, 30m, 45m, 60m).
+  - **Right-Click**: Opens the **Ambience** modal.
 - **🎨 Omarchy Theme Integration**: Seamlessly follows system colors (`bar.urgent`, `bar.foreground`, `bar.fontFamily`).
+
+---
+
+## ⌨️ Shortcuts & Controls
+
+| Shortcut / Action | Function | Description |
+|---|---|---|
+| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>A</kbd> | **Open Ambience** | Opens the centered Ambience modal |
+| <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>A</kbd> | **Play / Pause** | Toggles ambient sound playback instantly |
+| <kbd>Esc</kbd> | **Close Modal** | Dismisses the centered modal |
+| **Scroll Wheel on Bar** | **Volume +/-** | Adjusts volume by 5% when active |
+| **Middle-Click on Bar** | **Next Sound** | Advances to the next soundscape preset |
 
 ---
 
 ## 🌐 Open Source Sound Resources & Custom Loops
 
-You can add your own soundscapes to Ambience Studio simply by dropping `.ogg`, `.mp3`, `.wav`, or `.flac` files into:
+You can add your own soundscapes to Ambience simply by dropping `.ogg`, `.mp3`, `.wav`, or `.flac` files into:
 
 ```bash
 ~/.config/omarchy/plugins/dorneles.ambience/sounds/
 ```
 
-The plugin will automatically detect them and add them as selectable cards in the **Ambience Studio** popup!
+The plugin will automatically detect them and add them as selectable cards in the **Ambience** window!
 
 ### Recommended Free & Open Source Audio Repositories:
 - **[Freesound.org (CC0 Sounds)](https://freesound.org/search/?q=ambient+loop&f=license%3A%22Creative+Commons+0%22)**: Thousands of public domain nature loops, rain, wind, and city soundscapes.
@@ -62,74 +80,43 @@ The plugin will automatically detect them and add them as selectable cards in th
 
 ## 📦 Installation
 
-Install directly using the Omarchy CLI:
+### Automated Installation (Recommended)
 
-```bash
-omarchy plugin add https://github.com/jvlianodorneles/ambience.git --enable --yes
-```
-
-Or clone manually into your plugins folder:
+Clone and run the included installer:
 
 ```bash
 git clone https://github.com/jvlianodorneles/ambience.git ~/.config/omarchy/plugins/dorneles.ambience
-omarchy-shell shell rescanPlugins
-omarchy plugin enable dorneles.ambience
+cd ~/.config/omarchy/plugins/dorneles.ambience
+./install.sh
 ```
+
+The installer automatically configures `shell.json`, Hyprland keybindings, and Omarchy menu entries.
 
 ---
 
 ## 🗑️ Removal / Uninstallation
 
-To disable or remove the plugin from Omarchy:
+To remove the plugin from Omarchy:
 
 ```bash
-# Disable from the status bar
-omarchy plugin disable dorneles.ambience
-
-# Or completely remove the plugin
-omarchy plugin remove dorneles.ambience --yes
-```
-
-If installed manually:
-```bash
-omarchy plugin disable dorneles.ambience
+omarchy plugin disable dorneles.ambience 2>/dev/null || true
 rm -rf ~/.config/omarchy/plugins/dorneles.ambience
 omarchy-shell shell rescanPlugins
 ```
 
 ---
 
-## 🎮 Usage & Controls
-
-| Action | Control | Description |
-|---|---|---|
-| **Play / Pause** | Left-Click | Toggles sound playback |
-| **Volume Up / Down** | Scroll Wheel on Bar | Changes volume by 5% |
-| **Next Sound** | Middle-Click on Bar | Advances to the next soundscape preset |
-| **Open Studio** | Right-Click on Bar | Opens the visual Ambience Studio popup card |
-
----
-
 ## ⚙️ Configuration (`~/.config/omarchy/shell.json`)
-
-Configure default startup settings in `~/.config/omarchy/shell.json`:
 
 ```json
 {
   "id": "dorneles.ambience",
+  "mode": "active-only",
   "defaultPreset": "rain",
   "defaultVolume": 60,
   "showLabel": true
 }
 ```
-
-### Options Reference
-
-| Option | Type | Options / Values | Default | Description |
-|---|---|---|---|---|
-| `defaultPreset` | `enum` | `"rain"`, `"waves"`, `"campfire"`, `"brown"`, `"pink"`, `"white"`, `"binaural"`, `"cafe"` | `"rain"` | Default soundscape to start. |
-| `defaultVolume` | `integer` | `0` - `100` | `60` | Default volume percentage. |
-| `showLabel` | `boolean` | `true`, `false` | `true` | Show sound name on horizontal bars. |
 
 ---
 

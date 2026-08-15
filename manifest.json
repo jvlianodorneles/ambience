@@ -6,23 +6,38 @@
   "author": "Dorneles",
   "description": "Offline ambient soundscapes, procedural noise generator, and focus sound studio for Omarchy.",
   "kinds": [
-    "bar-widget"
+    "bar-widget",
+    "overlay"
   ],
+  "keepLoaded": true,
   "entryPoints": {
-    "barWidget": "BarWidget.qml"
+    "barWidget": "BarWidget.qml",
+    "overlay": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Ambience Studio",
-    "description": "Ambient noise and soundscape studio",
+    "displayName": "Ambience",
+    "description": "Ambient noise and soundscape generator",
     "category": "Widgets",
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
+      "mode": "always",
       "defaultPreset": "rain",
       "defaultVolume": 60,
       "showLabel": true
     },
     "schema": [
+      {
+        "key": "mode",
+        "type": "enum",
+        "label": "Visibility Mode",
+        "options": [
+          "always",
+          "active-only"
+        ],
+        "defaultValue": "always",
+        "description": "Show always on bar, or auto-hide when stopped and only reveal when playing sound."
+      },
       {
         "key": "defaultPreset",
         "type": "enum",
