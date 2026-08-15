@@ -47,25 +47,52 @@ def save_state(state):
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
 
+def is_ambience_process(pid: int) -> bool:
+    """Verifies that the given PID is alive and actually belongs to this Ambience daemon."""
+    try:
+        cmdline_file = Path(f"/proc/{pid}/cmdline")
+        if not cmdline_file.exists():
+            return False
+        raw = cmdline_file.read_bytes()
+        cmdline = raw.decode("utf-8", errors="replace").replace("\x00", " ")
+        if "ambience-engine.py" in cmdline and "_daemon" in cmdline:
+            return True
+        if "ambience-engine" in cmdline:
+            return True
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
+        return False
+    except Exception:
+        pass
+    return False
+
 def is_running():
     if PID_FILE.exists():
         try:
             with open(PID_FILE, "r") as f:
                 pid = int(f.read().strip())
             os.kill(pid, 0)
-            return pid
+            if is_ambience_process(pid):
+                return pid
+            # PID is recycled or belongs to an unrelated process
+            PID_FILE.unlink(missing_ok=True)
         except (ProcessLookupError, ValueError):
             PID_FILE.unlink(missing_ok=True)
         except PermissionError:
-            return True
+            PID_FILE.unlink(missing_ok=True)
     return None
 
 def stop_daemon():
     pid = is_running()
     if pid:
         try:
-            os.kill(pid, signal.SIGTERM)
-            time.sleep(0.15)
+            if is_ambience_process(pid):
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(0.15)
+                try:
+                    if is_ambience_process(pid):
+                        os.kill(pid, signal.SIGKILL)
+                except Exception:
+                    pass
         except Exception:
             pass
         PID_FILE.unlink(missing_ok=True)
