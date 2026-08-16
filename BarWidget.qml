@@ -370,8 +370,8 @@ BarWidget {
 
             Text {
               text: root.isPlaying
-                ? ("Tocando agora: " + root.activeName + " (" + root.currentVolume + "%)" + (root.timerRemainingSec > 0 ? " — Desligando em " + root.formatTimer(root.timerRemainingSec) : ""))
-                : "Sons ambientes relaxantes, gerador de ruído e foco off-line"
+                ? ("Now playing: " + root.activeName + " (" + root.currentVolume + "%)" + (root.timerRemainingSec > 0 ? " — Stopping in " + root.formatTimer(root.timerRemainingSec) : ""))
+                : "Relaxing ambient soundscapes, noise generator, and offline focus"
               color: root.isPlaying ? (root.bar ? root.bar.urgent : Color.urgent) : Qt.darker(Color.foreground, 1.4)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -380,7 +380,7 @@ BarWidget {
 
           Button {
             iconText: "\udb80\udd56"
-            tooltipText: "Fechar (Esc)"
+            tooltipText: "Close (Esc)"
             anchors.verticalCenter: parent.verticalCenter
             onClicked: studioWindow.open = false
           }
@@ -390,7 +390,7 @@ BarWidget {
 
         // Section 1: Soundscapes Grid (4 columns x 2 rows)
         PanelSectionHeader {
-          text: "SONS AMBIENTES (" + root.presetList.length + " DISPONÍVEIS)"
+          text: "SOUNDSCAPES (" + root.presetList.length + " AVAILABLE)"
           foreground: Color.foreground
         }
 
@@ -528,7 +528,7 @@ BarWidget {
 
               Repeater {
                 model: [
-                  { label: "Mudo", val: 0 },
+                  { label: "Mute", val: 0 },
                   { label: "30%", val: 30 },
                   { label: "60%", val: 60 },
                   { label: "80%", val: 80 },
@@ -572,7 +572,7 @@ BarWidget {
             spacing: Style.spacing.xs
 
             PanelSectionHeader {
-              text: "TEMPORIZADOR" + (root.timerRemainingSec > 0 ? (" (RESTANTE: " + root.formatTimer(root.timerRemainingSec) + ")") : "")
+              text: "SLEEP TIMER" + (root.timerRemainingSec > 0 ? (" (REMAINING: " + root.formatTimer(root.timerRemainingSec) + ")") : "")
               foreground: Color.foreground
             }
 
@@ -620,7 +620,7 @@ BarWidget {
                 anchors.verticalCenter: parent.verticalCenter
               }
               Text {
-                text: root.isPlaying ? "Pausar" : "Tocar"
+                text: root.isPlaying ? "Pause" : "Play"
                 color: Color.foreground
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -648,7 +648,7 @@ BarWidget {
               anchors.centerIn: parent
               spacing: 6
               Text { text: "󰒭"; color: Color.foreground; font.pixelSize: Style.font.body; anchors.verticalCenter: parent.verticalCenter }
-              Text { text: "Próximo som"; color: Color.foreground; font.pixelSize: Style.font.caption; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+              Text { text: "Next sound"; color: Color.foreground; font.pixelSize: Style.font.caption; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
             }
             MouseArea {
               id: btn2Mouse
@@ -671,7 +671,7 @@ BarWidget {
               anchors.centerIn: parent
               spacing: 6
               Text { text: "\udb80\ude4b"; color: Color.foreground; font.pixelSize: Style.font.body; anchors.verticalCenter: parent.verticalCenter }
-              Text { text: "Pasta de sons"; color: Color.foreground; font.pixelSize: Style.font.caption; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+              Text { text: "Sounds folder"; color: Color.foreground; font.pixelSize: Style.font.caption; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
             }
             MouseArea {
               id: btn3Mouse

@@ -97,8 +97,8 @@ try:
     if "trigger.ambience" not in content:
         target = '"trigger.share.receive"'
         entries = (
-            '  "trigger.ambience": {"icon":"󱒗","label":"Sons Ambiente (Ligar/Desligar)","action":"omarchy-shell dorneles.ambience toggle","aliases":["ambience","sons ambiente","ruido branco","chuva","som foco","natureza"]},\n'
-            '  "trigger.ambience.studio": {"icon":"󰎆","label":"Ambience","action":"omarchy-shell dorneles.ambience openStudio","aliases":["ambience","sons","foco","som ambiente"]},\n'
+            '  "trigger.ambience": {"icon":"󱒗","label":"Ambience (Play/Pause)","action":"omarchy-shell dorneles.ambience toggle","aliases":["ambience","ambient sounds","white noise","rain","focus sound","nature"]},\n'
+            '  "trigger.ambience.studio": {"icon":"󰎆","label":"Ambience","action":"omarchy-shell dorneles.ambience openStudio","aliases":["ambience","sounds","focus","ambient sound"]},\n'
         )
         if target in content:
             content = content.replace(target, entries + '  ' + target)
